@@ -29,6 +29,16 @@ app.get('/create',
   res.render('index');
 });
 
+// app.get('/signup',
+// (req, res) => {
+//   res.render('signup');
+// });
+
+// app.get('/login',
+// (req, res) => {
+//   res.render('login');
+// });
+
 app.get('/links',
 (req, res, next) => {
   models.Links.getAll()
@@ -102,7 +112,7 @@ app.post('/links',
 // 1 there is an error - send an error response
 // 2 there is already a user by that name - redirect to signup
 
-app.post('/signup', (req, res) =>{
+app.post('/signup', (req, res, next) =>{
   var username = req.body.username;
   var password = req.body.password;
 
@@ -110,44 +120,45 @@ app.post('/signup', (req, res) =>{
   .then((data) => {
     if (data) {
       // user has an account already
-
-      res.redirect('/signup');
-    } else {
-      models.Users.create({username: username, password: password})
-      // here we will have to update the session somehow
-      console.log("we were able to get to this point");
-      res.status(200).redirect('/');
+      throw data;
     }
+    models.Users.create({username: username, password: password})
+    .then((data) => {
+      return models.Sessions.update({hash: req.session.hash}, {userId: data.insertId})
+    })
+    .then((data2) => {
+      res.redirect('/');
+      next();
+    })
   })
-
+  .catch((data) => {
+    res.redirect('/signup');
+    next();
+  })
 });
 
-app.post('/login', (req, res) => {
+app.post('/login', (req, res, next) => {
   var username = req.body.username;
   var password = req.body.password;
 
   models.Users.get({username})
-  .then((data) => {
-    if (!data) {
-      console.log(username + ', you don\'t exist');
-      // if user doesnt exist, send them to signup
-      // res.status(404).send(`sorry, we can't find you`);
-      //sendstatus is not chainable; use status to chain
+  .then((user) => {
+
+    //if user doesn't exist or if pw is invalid
+    if (!user || !models.Users.compare(password, user.password, user.salt)) {
       res.status(403).redirect('/login');
     } else {
-
-      // we need to compare credentials here
-      if (models.Users.compare(password, data.password, data.salt)) {
-        // we will need to update the session to this specific user
-        // and then redirect to home
-        console.log("Successful login");
-        res.status(200).redirect('/');
-      } else {
-        // invalid credentials
-        console.log("stop trying to hack dude");
-        res.status(403).redirect('/login');
+        return models.Sessions.update({hash: req.session.hash}, {userId: user.id})
+        .then((data) => {
+          var hash = req.session.hash;
+          return models.Sessions.get({hash})
+        })
+        .then((data) => {
+          req.session = data;
+          res.redirect('/');
+          next();
+        })
       }
-    }
   });
 });
 // AND AN app.post for /login

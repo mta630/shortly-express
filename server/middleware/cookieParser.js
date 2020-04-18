@@ -28,8 +28,6 @@ if (!req.headers.cookie) {
   })
 
   req.cookies = result;
-
-  // console.log(req.cookies);
   next();
 }
 };
