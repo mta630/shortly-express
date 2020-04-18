@@ -5,29 +5,31 @@ const partials = require('express-partials');
 const bodyParser = require('body-parser');
 const Auth = require('./middleware/auth');
 const models = require('./models');
+const cookies = require('./middleware/cookieParser.js');
 
 const app = express();
 
+//sets and uses functions for all of the app.get and app.post endpoints
 app.set('views', `${__dirname}/views`);
 app.set('view engine', 'ejs');
 app.use(partials());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '../public')));
+app.use(cookies);
+app.use(Auth.createSession);
 
-
-
-app.get('/', 
+app.get('/',
 (req, res) => {
   res.render('index');
 });
 
-app.get('/create', 
+app.get('/create',
 (req, res) => {
   res.render('index');
 });
 
-app.get('/links', 
+app.get('/links',
 (req, res, next) => {
   models.Links.getAll()
     .then(links => {
@@ -38,7 +40,7 @@ app.get('/links',
     });
 });
 
-app.post('/links', 
+app.post('/links',
 (req, res, next) => {
   var url = req.body.url;
   if (!models.Links.isValidUrl(url)) {
@@ -77,6 +79,92 @@ app.post('/links',
 /************************************************************/
 // Write your authentication routes here
 /************************************************************/
+
+// DOCS FOR ROUTING IN EXPRESS
+// ------------------------------------------
+// https://expressjs.com/en/guide/routing.html
+//
+// WE WILL NEED TO ADD AN app.post FOR /signup
+// parameter
+// Inside of this method we will need to use a models.Users method
+// We will need to check if they already have an account
+//
+//  if they dont we can run models.Users.create
+//  models.Users is in a Promise format (we can use .then())
+//  this means that will be returning models.users.create
+//  the format for this method is create({username, password})
+//
+//  We should keep in mind that res.redirect is a thing and will // // probably nee to be implemented in here for a few edge cases
+//
+// possible end conditions for res.redirect or res.send
+// -------------------------------------
+// 0 The user finishes signing up without error - redirect to index
+// 1 there is an error - send an error response
+// 2 there is already a user by that name - redirect to signup
+
+app.post('/signup', (req, res) =>{
+  var username = req.body.username;
+  var password = req.body.password;
+
+  models.Users.get({username})
+  .then((data) => {
+    if (data) {
+      // user has an account already
+
+      res.redirect('/signup');
+    } else {
+      models.Users.create({username: username, password: password})
+      // here we will have to update the session somehow
+      console.log("we were able to get to this point");
+      res.status(200).redirect('/');
+    }
+  })
+
+});
+
+app.post('/login', (req, res) => {
+  var username = req.body.username;
+  var password = req.body.password;
+
+  models.Users.get({username})
+  .then((data) => {
+    if (!data) {
+      console.log(username + ', you don\'t exist');
+      // if user doesnt exist, send them to signup
+      // res.status(404).send(`sorry, we can't find you`);
+      //sendstatus is not chainable; use status to chain
+      res.status(403).redirect('/login');
+    } else {
+
+      // we need to compare credentials here
+      if (models.Users.compare(password, data.password, data.salt)) {
+        // we will need to update the session to this specific user
+        // and then redirect to home
+        console.log("Successful login");
+        res.status(200).redirect('/');
+      } else {
+        // invalid credentials
+        console.log("stop trying to hack dude");
+        res.status(403).redirect('/login');
+      }
+    }
+  });
+});
+// AND AN app.post for /login
+//
+//  models.Users.get is a promise type method
+//  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//  we will need to use models.Users.get to retrieve the correct
+//  user data from the system. This should be send in the req.body
+//
+//  the action above will give us some kind of user data
+//  we can then use models.users.compare to see if the login
+//   credentials match what is in the record
+//
+//  possible end conditions for response
+// ----------------------------------------------------------------
+// 0 The user has successfull credentials and is redirected to home
+// 1 the user has incorrect credentials and is redirected to login  // again with an res.status of (look up correct error code later    // mike)
 
 
 
