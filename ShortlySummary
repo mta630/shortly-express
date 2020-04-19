@@ -1,0 +1,145 @@
+GIT: 
+https://github.com/eLeiLei/hrr45-shortly-express.git
+
+Client
+- Backbone
+- jquery
+- underscore
+- Handlebars (for templates)
+
+Server
+- Node/Express 4 (no middleware)
+- EJS (templates)
+- Mocha (tests) - npm test
+- nodemon - npm start
+
+DB
+- mysql
+
+
+THOUGHTS: Set aside some time during the TA to get acquainted with problem and codebase. Taking notes. (~1hr?)
+
+=======================================
+Not necessary to do/Out of scope: Looking at client-side code
+
+Suggestions:
+Improve use of nodemon
+Use methods in server/models and server/lib - see docs/index.html 
+
+=======================================
+GOAL:
+Build a session-based server-side auth system
+
+DB:
+clicks 	-
+links 	- 
+sessions- store generated session hashes
+users 	- stores usernames & pw 
+		(model has methods for encryption and comparison)
+
+M - Handles DB interaction
+V - Creates relevant HTMLs --- not something we need to work with?
+C - Handles client requests
+
+TODO:  ALL INSIDE SERVER/
+
+CREATE MECHANISM FOR SIGNUP / LOGIN
+1. In db/index.js - Update db connection info
+2. In app.js (see line 78) - Add routes to Express server 
+	- add the routes/endpoints (url, related-cb-method) for POST requests?
+	- see views> login.ejs and signup.ejs 
+		- add /login endpoint
+		- add /signup endpoint
+3. Add callbacks to models - where
+
+	Auth Notes:
+		- salt is a pseudorandom string attached to the user's pw then used for encryption
+		- bcrypt is industry standard for comparing passwords for login
+		- sha1 is fast hashing algorithm
+		- don't use a really fast algorithm so that it slows down the attempted crack, but perhaps not a super slow one that slows your app down too. and not so slow that the user hates logging in
+
+Questions
+* What does app lines 84-86 mean?
+
+
+HANDLE SESSION AND COOKIES
+// building our own, but perhaps 
+// consider looking at cookie-parser and express-session to see how they work
+1. In middleware/cookieParser - parse cookie
+	- what is the req: 
+		- 
+	- what does this fn do:
+		- Access cookies on incoming
+		- Parse cookies into an object
+		- Assign object to cookies property
+	- what is the res:
+		- 
+
+
+	Cookie Notes:
+		- A document saved on computer containing user-specific info
+		- 3rd party cookies.. 
+			- unique id is saved in users's computer
+			- other data about the user stored in app's db
+				- what info do we want saved here? store separate files per cookie or one cookie with multiple bits of info? maybe separate cookies per session??
+
+2. In middleware/auth - createSession fn
+	- what is the req: 
+		- 
+	- what does this fn do:
+		- if req does not contain cookies
+			- generate cookies using hash (Q: existing? if yes, where?)
+			- set cookie in resp headers (Q: how to do this using express?)
+		- if req contains cookies, 
+			- get the value of the parsed cookie
+			- look up cookie in DB to see if its valid
+			- if not valid,
+				- what should happen? Q: return user to a logged out state??? what's the purpose of cookies here
+			- if valid
+				- look up user data related to session
+				- assign object to session property
+	- what is the res:
+		- 
+
+	Session Notes:
+		- where to store the sessions
+		- Think of sessions as hash tables -- can we draw this out
+			- [['23455', {user_id: 000, user_name: 'name'}],...]
+			where 23455 is the hashed key / session id and its tuple is.. the various relevant data relevant to that hashed key (like user's login info)
+		- Q: If I opened different tabs, is it still considered the same session or different session? What about different browsers?
+
+3. In app.js - mount the two middleware functions
+	- Q: How to mount?
+
+
+
+AUTHENTICATED ROUTES - handling differences between auth vs no auth?
+1. In ...? - Add verifySession helper to routes that require login
+	- Login required for: seeing shortened links, creating new short links
+	- Login not required for: using previously shortened link
+2. In ...? - Allow logout
+	- If user is logged in, show a logout element in UI 
+		- store state of loggedIn? or not - in ...?
+	- Upon state change to logout...
+		- destroy the session?? - tbd. to read more about sessions
+		- destroy the cookie?? - tbd. to read more about cookies
+		- return the user to a login page
+
+Questions
+* What is the difference between "SEEING shortened links" and "USING previously shortened link"? 
+* Is being authenticated + not auth essentially the same as having an active session + no session?
+
+
+TESTS
+1. Add 3 new tests to test/serverspec
+	-
+	- 
+	- 
+
+
+
+AUTHENTICAION : Login
+AUTHORIZATION : after login, authorize user to see relevant/allowed things
+	- authorization middleware: auth.isLoggedIn  (app.get('/', auth.isLoggedIn, callback))
+	- at /, if express middleware for auth.isLoggedIn is true, then trigger callack to render the desired page as the response (res.render(page))
+	- 

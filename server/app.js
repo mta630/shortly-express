@@ -6,7 +6,6 @@ const bodyParser = require('body-parser');
 const Auth = require('./middleware/auth');
 const models = require('./models');
 const cookies = require('./middleware/cookieParser.js');
-
 const app = express();
 
 //sets and uses functions for all of the app.get and app.post endpoints
@@ -19,27 +18,40 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use(cookies);
 app.use(Auth.createSession);
 
-app.get('/',
+app.get('/', Auth.verifySession,
+(req, res) => {
+  res.render('index');
+}
+);
+
+app.get('/create', Auth.verifySession,
 (req, res) => {
   res.render('index');
 });
 
-app.get('/create',
+app.get('/signup',
 (req, res) => {
-  res.render('index');
+  res.render('signup');
 });
 
-// app.get('/signup',
-// (req, res) => {
-//   res.render('signup');
-// });
+app.get('/login',
+(req, res) => {
+  res.render('login');
+});
 
-// app.get('/login',
-// (req, res) => {
-//   res.render('login');
-// });
+app.get('/logout', (req, res, next) => {
+  var hash = req.session.hash;
+  return models.Sessions.delete({hash})
+  .then (() => {
+    res.clearCookie();
+    res.redirect('/login');
+  })
+  .error((err) => {
+    res.status(500).send(err)
+  })
+})
 
-app.get('/links',
+app.get('/links', Auth.verifySession,
 (req, res, next) => {
   models.Links.getAll()
     .then(links => {
@@ -143,8 +155,6 @@ app.post('/login', (req, res, next) => {
 
   models.Users.get({username})
   .then((user) => {
-
-    //if user doesn't exist or if pw is invalid
     if (!user || !models.Users.compare(password, user.password, user.salt)) {
       res.status(403).redirect('/login');
     } else {
@@ -185,8 +195,7 @@ app.post('/login', (req, res, next) => {
 // If the short-code doesn't exist, send the user to '/'
 /************************************************************/
 
-app.get('/:code', (req, res, next) => {
-
+app.get('/:code', (req, res, next) => {;
   return models.Links.get({ code: req.params.code })
     .tap(link => {
 
@@ -205,6 +214,7 @@ app.get('/:code', (req, res, next) => {
       res.status(500).send(error);
     })
     .catch(() => {
+      console.log('PLEASE LOG THIS -------------------------');
       res.redirect('/');
     });
 });

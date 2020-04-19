@@ -468,10 +468,11 @@ describe('', function() {
         var maliciousCookieHash = '8a864482005bcc8b968f2b18f8f7ea490e577b20';
         var response = httpMocks.createResponse();
         var requestWithMaliciousCookie = httpMocks.createRequest();
-        requestWithMaliciousCookie.cookies.shortlyid = maliciousCookieHash;
+        // requestWithMaliciousCookie.cookies.shortlyid = maliciousCookieHash;
 
         createSession(requestWithMaliciousCookie, response, function() {
           var cookie = response.cookies.shortlyid;
+          // console.log('cookie------', cookie);
           expect(cookie).to.exist;
           expect(cookie).to.not.equal(maliciousCookieHash);
           done();
@@ -535,9 +536,13 @@ describe('', function() {
         var queryString = `
           SELECT users.username FROM users, sessions
           WHERE sessions.hash = ? AND users.id = sessions.userId
-        `;
+        `;                   // ^ cookie Value
+
+
 
         db.query(queryString, cookieValue, function(error, users) {
+          // console.log('cookieValue', cookieValue);
+          // console.log('users', users);
           if (error) { return done(error); }
           var user = users[0];
           expect(user.username).to.equal('Vivian');
@@ -610,7 +615,7 @@ describe('', function() {
       }
     };
 
-    xbeforeEach(function(done) {
+    beforeEach(function(done) {
       var options = {
         'method': 'POST',
         'followAllRedirects': true,
@@ -741,6 +746,7 @@ describe('', function() {
 
         requestWithSession(options, function(error, res, body) {
           if (error) { return done(error); }
+
           var currentLocation = res.request.href;
           expect(currentLocation).to.equal('http://127.0.0.1:4568/');
           done();
